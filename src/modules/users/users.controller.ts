@@ -48,35 +48,32 @@ export class UsersController {
     return users.map((user) => ({ ...transformUserResponse(user) }));
   }
 
-  @Get(':userId')
+  @Get(':id')
   @ApiOperation({ summary: 'Obter um usuário pelo ID' })
   @ApiResponse({ status: 200, description: 'Usuário encontrado' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
-  async findOne(@Param('userId') userId: string) {
-    const user = await this.usersService.findOne(userId);
+  async findOne(@Param('id') id: number) {
+    const user = await this.usersService.findOne(id);
     return transformUserResponse(user);
   }
 
-  @Patch(':userId')
+  @Patch(':id')
   @Roles(UserRoles.ADMIN)
   @ApiOperation({ summary: 'Atualizar um usuário' })
   @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
-  async update(
-    @Param('userId') userId: string,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
-    const user = await this.usersService.update(userId, updateUserDto);
+  async update(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto) {
+    const user = await this.usersService.update(id, updateUserDto);
     return transformUserResponse(user);
   }
 
-  @Delete(':userId')
+  @Delete(':id')
   @Roles(UserRoles.ADMIN)
   @ApiOperation({ summary: 'Remover um usuário' })
   @ApiResponse({ status: 200, description: 'Usuário removido com sucesso' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
-  async remove(@Param('userId') userId: string) {
-    const user = await this.usersService.remove(userId);
+  async remove(@Param('id') id: number) {
+    const user = await this.usersService.remove(id);
     return transformUserResponse(user);
   }
 }

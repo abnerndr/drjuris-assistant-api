@@ -1,6 +1,5 @@
 import {
   BaseEntity,
-  Column,
   CreateDateColumn,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -9,9 +8,6 @@ import {
 export class Base extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column({ type: 'uuid', generated: 'uuid' })
-  uuid: string;
 
   @CreateDateColumn({
     type: 'timestamp',

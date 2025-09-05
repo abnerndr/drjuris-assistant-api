@@ -1,6 +1,7 @@
 import type { AnalysisObject } from 'src/shared/interfaces/analysis';
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { Base } from './base';
+import { User } from './user.entity';
 
 @Entity('processes')
 export class Process extends Base {
@@ -24,4 +25,11 @@ export class Process extends Base {
 
   @Column({ type: 'varchar', name: 'file_url', length: 255, nullable: true })
   fileUrl?: string;
+
+  @ManyToOne(() => User, (user) => user.processes)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+
+  @Column({ name: 'user_id' })
+  userId: number;
 }

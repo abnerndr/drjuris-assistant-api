@@ -6,6 +6,7 @@ import { DatabaseConfigModule } from './config/database/database.config';
 import { AssistantModule } from './modules/assistant/assistant.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { ProcessesModule } from './modules/processes/processes.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     AssistantModule,
+    ProcessesModule,
   ],
   providers: [
     {

@@ -1,8 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
+import { AnalysisObject } from 'src/shared/interfaces/analysis';
 import { z } from 'zod';
 
 const CreateProcessSchema = z.object({
+  userId: z.number(),
   name: z
     .string()
     .max(100, 'O nome deve ter no máximo 100 caracteres')
@@ -12,6 +14,16 @@ const CreateProcessSchema = z.object({
     .max(100, 'O tipo deve ter no máximo 100 caracteres')
     .optional(),
   processText: z.string().min(1, 'O texto do processo é obrigatório'),
+  analysis: z.array(
+    z.object({
+      problema: z.string(),
+      tipo: z.string(),
+      gravidade: z.string(),
+      analise: z.string(),
+      recomendacao: z.string(),
+      precedentes: z.array(z.string()),
+    }),
+  ),
   additionalInstructions: z.string().optional(),
   fileUrl: z
     .string()
@@ -20,6 +32,13 @@ const CreateProcessSchema = z.object({
 });
 
 export class CreateProcessDto extends createZodDto(CreateProcessSchema) {
+  @ApiProperty({
+    description: 'ID do usuário',
+    required: true,
+    example: 1,
+  })
+  userId: number;
+
   @ApiProperty({
     description: 'Nome do processo',
     required: false,
@@ -48,6 +67,22 @@ export class CreateProcessDto extends createZodDto(CreateProcessSchema) {
     example: 'Foque na análise de prazos processuais',
   })
   additionalInstructions?: string;
+
+  @ApiProperty({
+    description: 'Análise do processo',
+    required: true,
+    example: [
+      {
+        problema: 'Problema 1',
+        tipo: 'Tipo 1',
+        gravidade: 'Gravidade 1',
+        analise: 'Análise 1',
+        recomendacao: 'Recomendação 1',
+        precedentes: ['Precedente 1', 'Precedente 2'],
+      },
+    ],
+  })
+  analysis: AnalysisObject[];
 
   @ApiProperty({
     description: 'URL do arquivo anexado',

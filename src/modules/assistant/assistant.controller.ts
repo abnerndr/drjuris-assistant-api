@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Request,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -24,11 +25,8 @@ import { UserActivated } from '../auth/decorators/user-active.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AssistantService } from './assistant.service';
-import {
-  ProcessRequestDto,
-  ProcessResponseDto,
-  UploadFileDto,
-} from './dto/process.dto';
+import { AnalyzeAssistantDto } from './dto/analyze-assistant.dto';
+import { ProcessResponseDto, UploadFileDto } from './dto/process.dto';
 
 @ApiTags('assistant')
 @Controller('assistant')
@@ -36,6 +34,34 @@ import {
 @ApiBearerAuth()
 export class AssistantController {
   constructor(private readonly assistantService: AssistantService) {}
+
+  @Post('analyze')
+  @UserActivated()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Enviar arquivo para análise' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Arquivo a ser analisado',
+    type: AnalyzeAssistantDto,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Análise do processo',
+    type: ProcessResponseDto,
+  })
+  async analyze(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { instructions?: string; name?: string; type?: string },
+    @Request() req: { user: { id: number } },
+  ) {
+    return await this.assistantService.analyzeFile(
+      Number(req.user.id),
+      file,
+      body.instructions,
+      body.name,
+      body.type,
+    );
+  }
 
   @Post('upload')
   @UserActivated()
@@ -59,33 +85,16 @@ export class AssistantController {
     return await this.assistantService.readFile(file, body.instructions);
   }
 
-  @Post('analyze')
-  @UserActivated()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Analisar texto do processo' })
-  @ApiBody({ type: ProcessRequestDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Análise do processo',
-    type: ProcessResponseDto,
-  })
-  async analyzeProcess(@Body() processRequest: ProcessRequestDto) {
-    return await this.assistantService.analyze(
-      processRequest.process_text,
-      processRequest.instructions,
-    );
-  }
-
   @Get('process')
   @UserActivated()
-  @ApiOperation({ summary: 'Listar todos os processos analisados' })
+  @ApiOperation({ summary: 'Listar todos os processos do usuário' })
   @ApiResponse({
     status: 200,
     description: 'Lista de processos',
     type: [ProcessResponseDto],
   })
-  async getAllProcesses() {
-    return await this.assistantService.findAll();
+  async getAllProcesses(@Request() req: { user: { id: number } }) {
+    return await this.assistantService.findAll(Number(req.user.id));
   }
 
   @Get('process/:id')

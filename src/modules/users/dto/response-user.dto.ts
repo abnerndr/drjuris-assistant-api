@@ -24,7 +24,6 @@ const RoleSchema = z.object({
 // Schema de saída (transformado)
 const ResponseUserSchema = z.object({
   id: z.string(),
-  userId: z.string(),
   name: z.string(),
   email: z.email(),
   phone: z.string().nullable(),
@@ -43,7 +42,6 @@ class ResponseUserDto extends createZodDto(ResponseUserSchema) {}
 export const transformUserResponse = (user: User): ResponseUserDto => {
   return {
     id: user.id.toString(),
-    userId: user.uuid,
     name: user.name,
     email: user.email,
     phone: user.phone,

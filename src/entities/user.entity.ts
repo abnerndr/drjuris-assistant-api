@@ -1,6 +1,7 @@
 import type { UserAddress } from 'src/shared/interfaces/user-address';
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Base } from './base';
+import { Process } from './process.entity';
 import { Role } from './role.entity';
 
 @Entity('users')
@@ -35,4 +36,7 @@ export class User extends Base {
 
   @Column({ name: 'role_id' })
   roleId: number;
+
+  @OneToMany(() => Process, (process) => process.user)
+  processes: Process[];
 }
