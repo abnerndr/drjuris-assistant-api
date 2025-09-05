@@ -20,6 +20,7 @@ const CreateUserSchema = z.object({
     .optional(),
   isActive: z.boolean().optional().default(true),
   roleId: z.number().int().min(1, 'Role ID is required'),
+  avatarUrl: z.string().optional(),
 });
 
 export class CreateUserDto extends createZodDto(CreateUserSchema) {}

@@ -25,7 +25,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AssistantService } from './assistant.service';
 import {
-  ErrorResponseDto,
   ProcessRequestDto,
   ProcessResponseDto,
   UploadFileDto,
@@ -53,16 +52,6 @@ export class AssistantController {
     description: 'Análise do processo',
     type: ProcessResponseDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Erro no arquivo enviado',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Erro interno do servidor',
-    type: ErrorResponseDto,
-  })
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { instructions?: string },
@@ -79,16 +68,6 @@ export class AssistantController {
     status: 200,
     description: 'Análise do processo',
     type: ProcessResponseDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Texto do processo vazio',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Erro interno do servidor',
-    type: ErrorResponseDto,
   })
   async analyzeProcess(@Body() processRequest: ProcessRequestDto) {
     return await this.assistantService.analyze(
@@ -117,11 +96,6 @@ export class AssistantController {
     status: 200,
     description: 'Processo encontrado',
     type: ProcessResponseDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Processo não encontrado',
-    type: ErrorResponseDto,
   })
   async getProcessById(@Param('id') id: number) {
     return await this.assistantService.findOne(id);

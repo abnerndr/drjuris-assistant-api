@@ -20,6 +20,9 @@ export class User extends Base {
   @Column({ nullable: true, name: 'document_number' })
   documentNumber: string;
 
+  @Column({ nullable: true, type: 'text', name: 'avatar_url' })
+  avatarUrl?: string;
+
   @Column({ type: 'jsonb', default: {} })
   address: UserAddress;
 

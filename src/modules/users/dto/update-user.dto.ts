@@ -20,6 +20,7 @@ const UpdateUserSchema = z.object({
     .optional(),
   isActive: z.boolean().optional().default(true),
   roleId: z.number().optional(),
+  avatarUrl: z.string().optional(),
 });
 
 export class UpdateUserDto extends createZodDto(UpdateUserSchema) {}
