@@ -15,6 +15,7 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
+    console.log(createUserDto);
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.usersRepository.create({
       ...createUserDto,
@@ -23,16 +24,16 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  findAll(): Promise<User[]> {
-    return this.usersRepository.find({
-      relations: ['role', 'company'],
+  async findAll(): Promise<User[]> {
+    return await this.usersRepository.find({
+      relations: ['role'],
     });
   }
 
   async findOne(uuid: string): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { uuid },
-      relations: ['role', 'company'],
+      relations: ['role'],
     });
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${uuid} não encontrado`);

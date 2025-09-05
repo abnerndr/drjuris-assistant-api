@@ -1,13 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class ProcessRequestDto {
+const ProcessRequestSchema = z.object({
+  process_text: z.string().min(1, 'Texto do processo é obrigatório'),
+  instructions: z.string().optional(),
+});
+
+export class ProcessRequestDto extends createZodDto(ProcessRequestSchema) {
   @ApiProperty({
     description: 'Texto do processo trabalhista a ser analisado',
     example: 'PROCESSO TRABALHISTA Nº 123/2024...'
   })
-  @IsString()
-  @IsNotEmpty()
   process_text: string;
 
   @ApiProperty({
@@ -15,12 +19,14 @@ export class ProcessRequestDto {
     required: false,
     example: 'Foque na análise de prazos processuais'
   })
-  @IsString()
-  @IsOptional()
   instructions?: string;
 }
 
-export class ProcessResponseDto {
+const ProcessResponseSchema = z.object({
+  analysis: z.any(),
+});
+
+export class ProcessResponseDto extends createZodDto(ProcessResponseSchema) {
   @ApiProperty({
     description: 'Análise do processo',
     example: {
@@ -39,7 +45,11 @@ export class ProcessResponseDto {
   analysis: any;
 }
 
-export class UploadFileDto {
+const UploadFileSchema = z.object({
+  instructions: z.string().optional(),
+});
+
+export class UploadFileDto extends createZodDto(UploadFileSchema) {
   @ApiProperty({
     type: 'string',
     format: 'binary',
@@ -51,12 +61,19 @@ export class UploadFileDto {
     description: 'Instruções adicionais para a análise',
     required: false
   })
-  @IsString()
-  @IsOptional()
   instructions?: string;
 }
 
-export class AnalysisProblemDto {
+const AnalysisProblemSchema = z.object({
+  problema: z.string(),
+  tipo: z.enum(['processual', 'contradição', 'fundamentação', 'prazo']),
+  gravidade: z.enum(['alta', 'média', 'baixa']),
+  analise: z.string(),
+  recomendacao: z.string(),
+  precedentes: z.array(z.string()),
+});
+
+export class AnalysisProblemDto extends createZodDto(AnalysisProblemSchema) {
   @ApiProperty({ description: 'Descrição do problema identificado' })
   problema: string;
 
@@ -82,11 +99,14 @@ export class AnalysisProblemDto {
     description: 'Precedentes relacionados',
     type: [String]
   })
-  @IsArray()
   precedentes: string[];
 }
 
-export class ErrorResponseDto {
+const ErrorResponseSchema = z.object({
+  detail: z.string(),
+});
+
+export class ErrorResponseDto extends createZodDto(ErrorResponseSchema) {
   @ApiProperty({ description: 'Mensagem de erro' })
   detail: string;
 }

@@ -31,5 +31,5 @@ export class User extends Base {
   role: Role;
 
   @Column({ name: 'role_id' })
-  roleId: string;
+  roleId: number;
 }
