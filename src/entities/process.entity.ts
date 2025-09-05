@@ -1,38 +1,27 @@
-import { ApiProperty } from '@nestjs/swagger';
-import type { JSONSchemaObject } from 'openai/lib/jsonschema';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import type { AnalysisObject } from 'src/shared/interfaces/analysis';
+import { Column, Entity } from 'typeorm';
+import { Base } from './base';
 
 @Entity('processes')
-export class Process {
-  @PrimaryGeneratedColumn()
-  @ApiProperty({ description: 'ID único do processo' })
-  id: number;
+export class Process extends Base {
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  name: string;
 
-  @Column({ type: 'text' })
-  @ApiProperty({ description: 'Texto do processo analisado' })
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  type: string;
+
+  @Column({ type: 'varchar', length: 100, default: 'PENDING' })
+  status: string;
+
+  @Column({ type: 'text', name: 'process_text' })
   processText: string;
 
-  @Column({ type: 'json', nullable: true })
-  @ApiProperty({ description: 'Análise do processo em formato JSON' })
-  analysis: JSONSchemaObject;
+  @Column({ type: 'jsonb', nullable: true })
+  analysis: AnalysisObject[];
 
-  @Column({ type: 'text', nullable: true })
-  @ApiProperty({ description: 'Instruções adicionais fornecidas' })
+  @Column({ type: 'text', name: 'additional_instructions', nullable: true })
   additionalInstructions?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  @ApiProperty({ description: 'Nome do arquivo original' })
-  originalFileName?: string;
-
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  @ApiProperty({ description: 'Extensão do arquivo original' })
-  fileExtension?: string;
-
-  @CreateDateColumn()
-  @ApiProperty({ description: 'Data de criação' })
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  @ApiProperty({ description: 'Data da última atualização' })
-  updatedAt: Date;
+  @Column({ type: 'varchar', name: 'file_url', length: 255, nullable: true })
+  fileUrl?: string;
 }

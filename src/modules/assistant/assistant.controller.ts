@@ -7,10 +7,12 @@ import {
   Param,
   Post,
   UploadedFile,
-  UseInterceptors
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiConsumes,
   ApiOperation,
@@ -18,20 +20,26 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { UserActivated } from '../auth/decorators/user-active.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { AssistantService } from './assistant.service';
-import { ErrorResponseDto, ProcessRequestDto, ProcessResponseDto, UploadFileDto } from './dto/process.dto';
+import {
+  ErrorResponseDto,
+  ProcessRequestDto,
+  ProcessResponseDto,
+  UploadFileDto,
+} from './dto/process.dto';
 
-
-@ApiTags('Process Analysis')
-@Controller()
+@ApiTags('assistant')
+@Controller('assistant')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
 export class AssistantController {
-  constructor(
-    private readonly assistantService: AssistantService,
-  ) {}
-
-
+  constructor(private readonly assistantService: AssistantService) {}
 
   @Post('upload')
+  @UserActivated()
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Enviar arquivo para análise' })
@@ -63,6 +71,7 @@ export class AssistantController {
   }
 
   @Post('analyze')
+  @UserActivated()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Analisar texto do processo' })
   @ApiBody({ type: ProcessRequestDto })
@@ -82,10 +91,14 @@ export class AssistantController {
     type: ErrorResponseDto,
   })
   async analyzeProcess(@Body() processRequest: ProcessRequestDto) {
-    return await this.assistantService.analyze(processRequest.process_text, processRequest.instructions);
+    return await this.assistantService.analyze(
+      processRequest.process_text,
+      processRequest.instructions,
+    );
   }
 
-  @Get('processes')
+  @Get('process')
+  @UserActivated()
   @ApiOperation({ summary: 'Listar todos os processos analisados' })
   @ApiResponse({
     status: 200,
@@ -96,7 +109,8 @@ export class AssistantController {
     return await this.assistantService.findAll();
   }
 
-  @Get('processes/:id')
+  @Get('process/:id')
+  @UserActivated()
   @ApiOperation({ summary: 'Obter processo por ID' })
   @ApiParam({ name: 'id', description: 'ID do processo' })
   @ApiResponse({
