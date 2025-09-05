@@ -30,13 +30,13 @@ export class UsersService {
     });
   }
 
-  async findOne(uuid: string): Promise<User> {
+  async findOne(userId: string): Promise<User> {
     const user = await this.usersRepository.findOne({
-      where: { uuid },
+      where: { uuid: userId },
       relations: ['role'],
     });
     if (!user) {
-      throw new NotFoundException(`Usuário com ID ${uuid} não encontrado`);
+      throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
     }
     return user;
   }
@@ -58,8 +58,8 @@ export class UsersService {
     return user;
   }
 
-  async update(uuid: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findOne(uuid);
+  async update(userId: string, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = await this.findOne(userId);
 
     if (updateUserDto.password) {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
@@ -69,8 +69,9 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async remove(uuid: string): Promise<void> {
-    const user = await this.findOne(uuid);
+  async remove(userId: string): Promise<User> {
+    const user = await this.findOne(userId);
     await this.usersRepository.remove(user);
+    return user;
   }
 }
