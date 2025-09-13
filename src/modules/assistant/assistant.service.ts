@@ -1,47 +1,50 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Process } from '../../entities/process.entity';
-import { CreateProcessDto } from './dto/create-process.dto';
+import { S3ManagerService } from '../aws/s3-manager/s3-manager.service';
+import { ResponseProcess } from '../processes/dto/response-process.dto';
+import { ProcessesService } from '../processes/processes.service';
 import { AnalyzerService } from './services/analyzer.service';
 import { FileExtractorService } from './services/file-extractor.service';
 
 @Injectable()
 export class AssistantService {
   constructor(
-    @InjectRepository(Process)
-    private processRepository: Repository<Process>,
+    private readonly s3ManagerService: S3ManagerService,
+    private readonly processesService: ProcessesService,
     private readonly analyzerService: AnalyzerService,
     private readonly fileExtractorService: FileExtractorService,
+    private readonly configService: ConfigService,
   ) {}
 
-  async analyzeFile(
+  async analyzeFileAndCreateProcess(
     userId: number,
     file: Express.Multer.File,
     instructions?: string,
     name?: string,
     type?: string,
   ): Promise<Process> {
-    const { fileBuffer, fileExtension } = await this.fileValidation(file);
-    const processText = await this.fileExtractorService.extractTextFromFile(
-      fileBuffer,
-      fileExtension,
-    );
-    if (!processText || processText.trim().length < 10) {
-      throw new BadRequestException(
-        'Não foi possível extrair texto suficiente do arquivo.',
-      );
-    }
-    const analysis = await this.analyzerService.analyze(
-      processText,
+    const { processText, analysisResult } = await this.processFile(
+      file,
       instructions,
     );
-    return await this.create({
+
+    if (analysisResult.error) {
+      throw new BadRequestException(`Erro na análise: ${analysisResult.error}`);
+    }
+
+    const fileUrl = await this.s3ManagerService.uploadFile(
+      file,
+      this.configService.get<string>('AWS_S3_BUCKET_NAME')!,
+    );
+
+    return await this.processesService.create({
       userId,
       name,
+      fileUrl,
       type,
       processText,
-      analysis,
+      analysis: analysisResult || [],
       additionalInstructions: instructions,
     });
   }
@@ -50,36 +53,61 @@ export class AssistantService {
     file: Express.Multer.File,
     instructions?: string,
   ): Promise<string> {
+    const { analysisResult } = await this.processFile(file, instructions);
+
+    if (analysisResult.error) {
+      return analysisResult.rawText || 'Erro na análise do documento';
+    }
+
+    return JSON.stringify(analysisResult.analysis || []);
+  }
+
+  private async processFile(
+    file: Express.Multer.File,
+    instructions?: string,
+  ): Promise<{
+    processText: string;
+    analysisResult: any;
+  }> {
     const { fileBuffer, fileExtension } = await this.fileValidation(file);
     const processText = await this.fileExtractorService.extractTextFromFile(
       fileBuffer,
       fileExtension,
     );
+
     if (!processText || processText.trim().length < 10) {
       throw new BadRequestException(
         'Não foi possível extrair texto suficiente do arquivo.',
       );
     }
-    const analysis = await this.analyzerService.analyze(
+
+    const analysisResult = await this.analyzerService.analyze(
       processText,
       instructions,
+      false,
     );
-    return analysis;
+
+    return { processText, analysisResult };
   }
 
-  async analyze(
-    processText: string,
-    additionalInstructions?: string,
-  ): Promise<any> {
-    if (!processText || processText.trim().length === 0) {
-      throw new BadRequestException('O texto do processo não pode estar vazio');
-    }
-    const analysis = await this.analyzerService.analyze(
-      processText,
-      additionalInstructions,
-    );
-    return analysis;
-  }
+  // async analyze(
+  //   processText: string,
+  //   additionalInstructions?: string,
+  // ): Promise<any> {
+  //   if (!processText || processText.trim().length === 0) {
+  //     throw new BadRequestException('O texto do processo não pode estar vazio');
+  //   }
+  //   const analysisResult = await this.analyzerService.analyze(
+  //     processText,
+  //     additionalInstructions,
+  //   );
+
+  //   if (analysisResult.error) {
+  //     throw new BadRequestException(`Erro na análise: ${analysisResult.error}`);
+  //   }
+
+  //   return analysisResult.analysis || [];
+  // }
 
   private async fileValidation(file: Express.Multer.File) {
     if (!file) {
@@ -99,19 +127,11 @@ export class AssistantService {
     };
   }
 
-  async create(process: CreateProcessDto): Promise<Process> {
-    return await this.processRepository.save(process);
+  async findAll(userId: number): Promise<ResponseProcess[]> {
+    return await this.processesService.findAll(userId);
   }
 
-  async findAll(userId: number): Promise<Process[]> {
-    return await this.processRepository.find({
-      order: { createdAt: 'DESC' },
-      relations: ['user'],
-      where: { userId },
-    });
-  }
-
-  async findOne(id: number): Promise<Process | null> {
-    return await this.processRepository.findOne({ where: { id } });
+  async findOne(id: number): Promise<ResponseProcess | null> {
+    return await this.processesService.findOne(id);
   }
 }

@@ -54,7 +54,7 @@ export class AssistantController {
     @Body() body: { instructions?: string; name?: string; type?: string },
     @Request() req: { user: { id: number } },
   ) {
-    return await this.assistantService.analyzeFile(
+    return await this.assistantService.analyzeFileAndCreateProcess(
       Number(req.user.id),
       file,
       body.instructions,

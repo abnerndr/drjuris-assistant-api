@@ -1,11 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Process } from 'src/entities/process.entity';
 import { User } from 'src/entities/user.entity';
+import { UserRoles } from 'src/shared/enums/user-roles';
 import { Repository } from 'typeorm';
+import { CreateProcessDto } from '../assistant/dto/create-process.dto';
 import {
+  ResponseProcess,
   transformProcessResponse,
-  type ResponseProcess,
 } from './dto/response-process.dto';
 
 @Injectable()
@@ -16,6 +22,10 @@ export class ProcessesService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
+
+  async create(process: CreateProcessDto): Promise<Process> {
+    return await this.processRepository.save(process);
+  }
 
   async findByUserId(userId: number): Promise<ResponseProcess[]> {
     // Verificar se o usuário existe
@@ -34,10 +44,15 @@ export class ProcessesService {
     return processes.map((process) => transformProcessResponse(process));
   }
 
-  async findAll(): Promise<ResponseProcess[]> {
+  async findAll(userId?: number): Promise<ResponseProcess[]> {
+    let where = {};
+    if (userId) {
+      where = { userId: userId };
+    }
     const processes = await this.processRepository.find({
-      relations: ['user'],
       order: { createdAt: 'DESC' },
+      relations: ['user'],
+      where,
     });
 
     return processes.map((process) => transformProcessResponse(process));
@@ -51,6 +66,35 @@ export class ProcessesService {
 
     if (!process) {
       throw new NotFoundException(`Processo com ID ${id} não encontrado`);
+    }
+
+    return transformProcessResponse(process);
+  }
+
+  async findOneWithPermission(
+    id: number,
+    userId: number,
+    userRole: string,
+  ): Promise<ResponseProcess> {
+    const process = await this.processRepository.findOne({
+      where: { id },
+      relations: ['user', 'user.role'],
+    });
+
+    if (!process) {
+      throw new NotFoundException('Processo não encontrado');
+    }
+
+    // Administradores podem ver qualquer processo
+    if (userRole === UserRoles.ADMIN) {
+      return transformProcessResponse(process);
+    }
+
+    // Usuários comuns só podem ver seus próprios processos
+    if (process.userId !== userId) {
+      throw new ForbiddenException(
+        'Você só pode acessar seus próprios processos',
+      );
     }
 
     return transformProcessResponse(process);

@@ -1,49 +1,81 @@
-import { GoogleGenAI } from '@google/genai';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import type { AnalysisProblemDto } from '../dto/process.dto';
+import { Provider } from 'src/shared/enums/provider';
+import { AnalysisProblemDto } from '../dto/process.dto';
+import { ProviderService } from './provider.service';
 
 @Injectable()
 export class AnalyzerService {
   private readonly maxCharacters: number;
-  private readonly openai: OpenAI;
-  private readonly genai: GoogleGenAI;
-  private readonly content = "Você é um especialista em direito trabalhista brasileiro. Um advogado experiente e versado na lei";
+  private readonly content =
+    'Você é um especialista em direito trabalhista brasileiro. Um advogado experiente e versado na lei';
 
-  constructor(private configService: ConfigService) {
-    this.maxCharacters = Number(this.configService.get('MAX_TEXT_LENGTH')) || 6000;
-    
-    this.openai = new OpenAI({
-      apiKey: this.configService.get('OPENAI_API_KEY'),
-    });
-
-    this.genai = new GoogleGenAI({
-      apiKey: this.configService.get('GEMINI_API_KEY'),
-    });
+  constructor(
+    private configService: ConfigService,
+    private providerService: ProviderService,
+  ) {
+    this.maxCharacters =
+      Number(this.configService.get('MAX_TEXT_LENGTH')) || 6000;
   }
 
-  async analyze(processText: string, additionalInstructions?: string): Promise<any> {
+  async analyze(
+    text: string,
+    instructions?: string,
+    useBasic?: boolean,
+  ): Promise<{
+    error?: string;
+    rawText?: string;
+    analysis?: AnalysisProblemDto[];
+  }> {
     try {
-      return await this.analyzeAdvanced(processText, additionalInstructions);
+      if (useBasic) {
+        // Para análise básica, usar Gemini
+        this.providerService.switchProvider(Provider.GEMINI);
+        return await this.analyzeBasic(text, instructions);
+      } else {
+        // Para análise avançada, usar OpenAI
+        this.providerService.switchProvider(Provider.OPENAI);
+        return await this.advanced(text, instructions);
+      }
     } catch (error) {
-      return await this.analyzeBasic(processText, additionalInstructions);
+      console.error(
+        'Erro na análise, tentando análise básica com Gemini:',
+        error,
+      );
+      this.providerService.switchProvider(Provider.GEMINI);
+      return await this.analyzeBasic(text, instructions);
     }
   }
 
-  private async analyzeAdvanced(processText: string, additionalInstructions?: string): Promise<{ error?: string; rawText?: string; analysis?: AnalysisProblemDto[] }> {
-    let truncatedText = processText;
-    if (processText.length > this.maxCharacters) {
+  private async advanced(
+    text: string,
+    instructions?: string,
+  ): Promise<{
+    error?: string;
+    rawText?: string;
+    analysis?: AnalysisProblemDto[];
+  }> {
+    let truncatedText = text;
+    if (text.length > this.maxCharacters) {
       const halfLength = Math.floor(this.maxCharacters / 2);
-      const firstPart = processText.slice(0, halfLength);
-      const lastPart = processText.slice(-halfLength);
+      const firstPart = text.slice(0, halfLength);
+      const lastPart = text.slice(-halfLength);
       truncatedText = `${firstPart}\n\n[...texto truncado para análise...]\n\n${lastPart}`;
     }
 
-    const relevantLaws = await this.getRelevantLegalInfo(truncatedText.slice(0, 500));
-    const prompt = this.createAdvancedPrompt(relevantLaws, truncatedText, additionalInstructions);
-    
-    const promptResponse = await this.openai.chat.completions.create({
+    const relevantLaws = await this.getRelevantLegalInfo(
+      truncatedText.slice(0, 500),
+      false,
+    );
+    const prompt = this.advancedPrompt(
+      relevantLaws,
+      truncatedText,
+      instructions,
+    );
+
+    const providerInstance = this.providerService.getProvider<OpenAI>();
+    const promptResponse = await providerInstance.chat.completions.create({
       model: 'gpt-3.5-turbo-16k',
       messages: [
         { role: 'system', content: this.content },
@@ -54,14 +86,15 @@ export class AnalyzerService {
 
     const messageContent = promptResponse.choices?.[0]?.message?.content;
     const analysisText = messageContent ? messageContent.trim() : '';
-    
+
     const jsonStart = analysisText.indexOf('[');
     const jsonEnd = analysisText.lastIndexOf(']') + 1;
-    
+
     if (jsonStart >= 0 && jsonEnd > jsonStart) {
       const jsonStr = analysisText.slice(jsonStart, jsonEnd);
       try {
-        const parsedJson: { analysis: AnalysisProblemDto[] } = JSON.parse(jsonStr);
+        const parsedJson: { analysis: AnalysisProblemDto[] } =
+          JSON.parse(jsonStr);
         return parsedJson;
       } catch (e) {
         console.log('JSON inválido recebido, retornando texto completo');
@@ -71,11 +104,19 @@ export class AnalyzerService {
     return { error: 'JSON não encontrado', rawText: analysisText };
   }
 
-  private async analyzeBasic(processText: string, additionalInstructions?: string): Promise<{ error?: string; rawText?: string; analysis?: AnalysisProblemDto[] }> {
-    const basicPrompt = this.createBasicPrompt(processText, additionalInstructions);
-    
+  private async analyzeBasic(
+    processText: string,
+    additionalInstructions?: string,
+  ): Promise<{
+    error?: string;
+    rawText?: string;
+    analysis?: AnalysisProblemDto[];
+  }> {
+    const basicPrompt = this.basicPrompt(processText, additionalInstructions);
+
     try {
-      const promptResponse = await this.openai.chat.completions.create({
+      const providerInstance = this.providerService.getProvider<OpenAI>();
+      const promptResponse = await providerInstance.chat.completions.create({
         model: 'gpt-3.5-turbo-16k',
         messages: [
           { role: 'system', content: this.content },
@@ -93,7 +134,8 @@ export class AnalyzerService {
       if (jsonStart >= 0 && jsonEnd > jsonStart) {
         const jsonStr = fallbackAnalysis.slice(jsonStart, jsonEnd);
         try {
-          const parsedJson: { analysis: AnalysisProblemDto[] } = JSON.parse(jsonStr);
+          const parsedJson: { analysis: AnalysisProblemDto[] } =
+            JSON.parse(jsonStr);
           return parsedJson;
         } catch {
           return { error: 'JSON inválido', rawText: fallbackAnalysis };
@@ -106,7 +148,10 @@ export class AnalyzerService {
     }
   }
 
-  private async getRelevantLegalInfo(query: string): Promise<string> {
+  private async getRelevantLegalInfo(
+    query: string,
+    basic: boolean,
+  ): Promise<string> {
     try {
       const prompt = `
         Você é um especialista em direito trabalhista brasileiro.
@@ -117,7 +162,10 @@ export class AnalyzerService {
         Responda apenas com os artigos e precedentes relevantes, sem comentários adicionais.
       `;
 
-      const promptResponse = await this.openai.chat.completions.create({
+      // Para getRelevantLegalInfo, sempre usar OpenAI para consistência
+      // O provider já foi definido no método analyze principal
+      const providerInstance = this.providerService.getProvider<OpenAI>();
+      const promptResponse = await providerInstance.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [
           { role: 'system', content: this.content },
@@ -127,14 +175,20 @@ export class AnalyzerService {
       });
 
       const messageContent = promptResponse.choices?.[0]?.message?.content;
-      return messageContent ? messageContent.trim() : 'Não foi possível recuperar leis relevantes.';
+      return messageContent
+        ? messageContent.trim()
+        : 'Não foi possível recuperar leis relevantes.';
     } catch (error) {
       console.error('Erro ao buscar informações legais relevantes:', error);
       return 'Não foi possível recuperar leis relevantes.';
     }
   }
 
-  private createAdvancedPrompt(laws: string, text: string, additionalPrompt?: string): string {
+  private advancedPrompt(
+    laws: string,
+    text: string,
+    instructions?: string,
+  ): string {
     return `
       Você é um especialista em direito trabalhista brasileiro, com profundo conhecimento da CLT e jurisprudência do TST.
       Use as seguintes leis e precedentes relevantes para informar sua análise:
@@ -154,11 +208,11 @@ export class AnalyzerService {
       ]
       Use linguagem técnica jurídica apropriada, mas garanta que o formato JSON seja exatamente como especificado acima e seja válido.
       
-      ${additionalPrompt ? additionalPrompt : ''}
+      ${instructions ? instructions : ''}
     `;
   }
 
-  private createBasicPrompt(text: string, additionalPrompt?: string): string {
+  private basicPrompt(text: string, instructions?: string): string {
     return `
       Você é um especialista em direito trabalhista brasileiro, com profundo conhecimento da CLT e jurisprudência do TST.
       Analise o processo a seguir e identifique todos os problemas e inconsistências:
@@ -175,7 +229,7 @@ export class AnalyzerService {
         }
       ]
       Use linguagem técnica jurídica apropriada, mas garanta que o formato JSON seja exatamente como especificado acima e seja válido.
-      ${additionalPrompt ? additionalPrompt : ''}
+      ${instructions ? instructions : ''}
     `;
   }
 }

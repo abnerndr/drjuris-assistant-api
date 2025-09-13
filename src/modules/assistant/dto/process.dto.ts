@@ -10,14 +10,14 @@ const ProcessRequestSchema = z.object({
 export class ProcessRequestDto extends createZodDto(ProcessRequestSchema) {
   @ApiProperty({
     description: 'Texto do processo trabalhista a ser analisado',
-    example: 'PROCESSO TRABALHISTA Nº 123/2024...'
+    example: 'PROCESSO TRABALHISTA Nº 123/2024...',
   })
   process_text: string;
 
   @ApiProperty({
     description: 'Instruções adicionais para a análise',
     required: false,
-    example: 'Foque na análise de prazos processuais'
+    example: 'Foque na análise de prazos processuais',
   })
   instructions?: string;
 }
@@ -35,12 +35,13 @@ export class ProcessResponseDto extends createZodDto(ProcessResponseSchema) {
           problema: 'Prazo prescricional não observado',
           tipo: 'prazo',
           gravidade: 'alta',
-          analise: 'O prazo de 2 anos para reclamar verbas rescisórias foi ultrapassado',
+          analise:
+            'O prazo de 2 anos para reclamar verbas rescisórias foi ultrapassado',
           recomendacao: 'Verificar se há interrupção ou suspensão do prazo',
-          precedentes: ['Súmula 437 do TST']
-        }
-      ]
-    }
+          precedentes: ['Súmula 437 do TST'],
+        },
+      ],
+    },
   })
   analysis: any;
 }
@@ -53,13 +54,13 @@ export class UploadFileDto extends createZodDto(UploadFileSchema) {
   @ApiProperty({
     type: 'string',
     format: 'binary',
-    description: 'Arquivo a ser analisado (PDF, DOCX ou TXT)'
+    description: 'Arquivo a ser analisado (PDF, DOCX ou TXT)',
   })
   file: Express.Multer.File;
 
   @ApiProperty({
     description: 'Instruções adicionais para a análise',
-    required: false
+    required: false,
   })
   instructions?: string;
 }
@@ -77,15 +78,15 @@ export class AnalysisProblemDto extends createZodDto(AnalysisProblemSchema) {
   @ApiProperty({ description: 'Descrição do problema identificado' })
   problema: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Tipo do problema',
-    enum: ['processual', 'contradição', 'fundamentação', 'prazo']
+    enum: ['processual', 'contradição', 'fundamentação', 'prazo'],
   })
   tipo: 'processual' | 'contradição' | 'fundamentação' | 'prazo';
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Gravidade do problema',
-    enum: ['alta', 'média', 'baixa']
+    enum: ['alta', 'média', 'baixa'],
   })
   gravidade: 'alta' | 'média' | 'baixa';
 
@@ -95,9 +96,9 @@ export class AnalysisProblemDto extends createZodDto(AnalysisProblemSchema) {
   @ApiProperty({ description: 'Recomendação para resolver o problema' })
   recomendacao: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Precedentes relacionados',
-    type: [String]
+    type: [String],
   })
   precedentes: string[];
 }
